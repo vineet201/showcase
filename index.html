@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Website Demo Showcase - Stairio</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -71,50 +71,75 @@
         }
         
         .modal-header {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            height: 60px;
-            background: rgba(255, 255, 255, 0.95);
+            height: 44px;
+            background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 16px;
             z-index: 10000;
-            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 1px 20px rgba(0, 0, 0, 0.1);
+            /* Ensure it stays above mobile browser UI */
+            margin-top: env(safe-area-inset-top);
+            padding-top: max(8px, env(safe-area-inset-top));
+        }
+        
+        /* Mobile specific adjustments */
+        @media (max-width: 768px) {
+            .modal-header {
+                height: 50px;
+                padding-top: 12px;
+                /* Account for mobile browser chrome */
+                top: env(safe-area-inset-top, 0);
+            }
+            
+            .modal-iframe {
+                padding-top: 50px;
+                /* Ensure iframe starts below the header */
+                margin-top: env(safe-area-inset-top, 0);
+            }
         }
         
         .modal-iframe {
             width: 100%;
             height: 100vh;
             border: none;
-            padding-top: 60px;
+            padding-top: 44px;
             box-sizing: border-box;
         }
         
         .back-btn, .close-btn {
-            background: #007AFF;
+            background: rgba(0, 122, 255, 0.9);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 20px;
+            padding: 6px 12px;
+            border-radius: 16px;
             font-weight: 500;
+            font-size: 13px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
         
         .back-btn:hover, .close-btn:hover {
-            background: #0056CC;
+            background: rgba(0, 86, 204, 0.9);
+            transform: scale(1.05);
         }
         
         .close-btn {
-            background: #FF3B30;
+            background: rgba(255, 59, 48, 0.9);
         }
         
         .close-btn:hover {
-            background: #D70015;
+            background: rgba(215, 0, 21, 0.9);
         }
     </style>
 </head>
@@ -281,7 +306,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     <div class="demo-card bg-white rounded-3xl p-8 shadow-lg border border-apple-gray-200 hover:shadow-xl">
                         <div class="aspect-video bg-apple-gray-100 rounded-2xl mb-6 overflow-hidden">
-                            <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=400&h=300&fit=crop&crop=center" 
+                            <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&h=300&fit=crop&crop=center" 
                                  alt="Tasty restaurant main demo" 
                                  class="w-full h-full object-cover">
                         </div>
@@ -381,7 +406,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <button class="back-btn" onclick="closeDemo()">← Back</button>
-                <span class="text-apple-gray-800 font-medium">Demo Preview</span>
+                <span class="text-apple-gray-700 font-medium text-sm opacity-80">Demo Preview</span>
                 <button class="close-btn" onclick="closeDemo()">✕</button>
             </div>
             <iframe id="demoFrame" class="modal-iframe" src=""></iframe>
@@ -396,6 +421,14 @@
             iframe.src = url;
             modal.classList.add('show');
             document.body.style.overflow = 'hidden'; // Prevent background scrolling
+            
+            // Mobile specific fixes
+            if (window.innerWidth <= 768) {
+                // Force scroll to top on mobile to avoid URL bar issues
+                window.scrollTo(0, 0);
+                // Prevent zoom on mobile
+                document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+            }
         }
         
         function closeDemo() {
@@ -405,6 +438,11 @@
             modal.classList.remove('show');
             iframe.src = ''; // Clear the iframe
             document.body.style.overflow = 'auto'; // Restore scrolling
+            
+            // Reset viewport on mobile
+            if (window.innerWidth <= 768) {
+                document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
+            }
         }
         
         // Close modal when clicking outside
@@ -419,6 +457,15 @@
             if (e.key === 'Escape') {
                 closeDemo();
             }
+        });
+        
+        // Handle orientation change on mobile
+        window.addEventListener('orientationchange', function() {
+            setTimeout(function() {
+                if (document.getElementById('demoModal').classList.contains('show')) {
+                    window.scrollTo(0, 0);
+                }
+            }, 100);
         });
     </script>
 </body>
