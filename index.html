@@ -141,6 +141,61 @@
         .close-btn:hover {
             background: rgba(215, 0, 21, 0.9);
         }
+        /* Loading and blocked overlays */
+        .overlay-center {
+            position: fixed;
+            top: 44px; /* below modal header */
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.04);
+            z-index: 1000;
+        }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(0,0,0,0.1);
+            border-top-color: #3b82f6; /* blue-500 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .blocked-box {
+            background: rgba(255,255,255,0.85);
+            -webkit-backdrop-filter: blur(12px);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            border-radius: 16px;
+            padding: 20px 24px;
+            color: #1f2937; /* gray-800 */
+            text-align: center;
+            max-width: 520px;
+            margin: 0 16px;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+        }
+        .blocked-title { font-weight: 600; margin-bottom: 6px; }
+        .blocked-desc { color: #6b7280; font-size: 14px; }
+        @media (max-width: 768px) {
+            .overlay-center { top: 50px; }
+        }
+        /* New: open button style */
+        .open-btn {
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+        }
+        .open-btn:hover { background: rgba(0,0,0,0.75); transform: scale(1.05); }
     </style>
 </head>
 <body class="font-sf bg-white text-apple-gray-700">
@@ -407,59 +462,107 @@
             <div class="modal-header">
                 <button class="back-btn" onclick="closeDemo()">← Back</button>
                 <span class="text-apple-gray-700 font-medium text-sm opacity-80">Demo Preview</span>
-                <button class="close-btn" onclick="closeDemo()">✕</button>
+                <div class="flex items-center gap-2">
+                    <button class="open-btn" onclick="openInNewTab()" aria-label="Open demo in new tab">Open</button>
+                    <button class="close-btn" onclick="closeDemo()">✕</button>
+                </div>
+            </div>
+            <div id="loadingOverlay" class="overlay-center">
+                <div class="spinner" aria-label="Loading preview"></div>
+            </div>
+            <div id="blockedOverlay" class="overlay-center">
+                <div class="blocked-box">
+                    <div class="blocked-title">This site can’t be embedded</div>
+                    <div class="blocked-desc">The website blocks previews inside other pages for security. Use Back to return.</div>
+                    <div style="margin-top:12px;">
+                        <button class="open-btn" onclick="openInNewTab()">Open in new tab</button>
+                    </div>
+                </div>
             </div>
             <iframe id="demoFrame" class="modal-iframe" src=""></iframe>
         </div>
     </div>
 
     <script>
+        // Track current demo URL for external open
+        let currentDemoUrl = null;
+
         function openDemo(url) {
             const modal = document.getElementById('demoModal');
             const iframe = document.getElementById('demoFrame');
-            
+            const loading = document.getElementById('loadingOverlay');
+            const blocked = document.getElementById('blockedOverlay');
+
+            currentDemoUrl = url; // store for open in new tab
+
+            // Reset state
+            loading.style.display = 'flex';
+            blocked.style.display = 'none';
+
+            let loaded = false;
+            iframe.onload = () => {
+                loaded = true;
+                loading.style.display = 'none';
+                blocked.style.display = 'none';
+            };
+
+            // Show modal and load URL
             iframe.src = url;
             modal.classList.add('show');
-            document.body.style.overflow = 'hidden'; // Prevent background scrolling
-            
+            document.body.style.overflow = 'hidden';
+
+            // After timeout, if not loaded, assume blocked
+            window.clearTimeout(window.__iframeTimeout);
+            window.__iframeTimeout = window.setTimeout(() => {
+                if (!loaded) {
+                    loading.style.display = 'none';
+                    blocked.style.display = 'flex';
+                }
+            }, 3000);
+
             // Mobile specific fixes
             if (window.innerWidth <= 768) {
-                // Force scroll to top on mobile to avoid URL bar issues
                 window.scrollTo(0, 0);
-                // Prevent zoom on mobile
-                document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+                const vp = document.querySelector('meta[name=viewport]');
+                if (vp) vp.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
             }
         }
-        
+
+        function openInNewTab() {
+            if (!currentDemoUrl) return;
+            const w = window.open(currentDemoUrl, '_blank');
+            if (w) { try { w.opener = null; } catch (e) {} }
+        }
+
         function closeDemo() {
             const modal = document.getElementById('demoModal');
             const iframe = document.getElementById('demoFrame');
-            
+            const loading = document.getElementById('loadingOverlay');
+            const blocked = document.getElementById('blockedOverlay');
+
             modal.classList.remove('show');
-            iframe.src = ''; // Clear the iframe
-            document.body.style.overflow = 'auto'; // Restore scrolling
-            
-            // Reset viewport on mobile
+            iframe.src = '';
+            iframe.onload = null;
+            document.body.style.overflow = 'auto';
+            loading.style.display = 'none';
+            blocked.style.display = 'none';
+            window.clearTimeout(window.__iframeTimeout);
+            currentDemoUrl = null;
+
             if (window.innerWidth <= 768) {
-                document.querySelector('meta[name=viewport]').setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
+                const vp = document.querySelector('meta[name=viewport]');
+                if (vp) vp.setAttribute('content', 'width=device-width, initial-scale=1.0, viewport-fit=cover');
             }
         }
-        
-        // Close modal when clicking outside
+
         document.getElementById('demoModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeDemo();
-            }
+            if (e.target === this) closeDemo();
         });
-        
-        // Close modal with Escape key
+
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeDemo();
-            }
+            if (e.key === 'Escape') closeDemo();
         });
-        
-        // Handle orientation change on mobile
+
         window.addEventListener('orientationchange', function() {
             setTimeout(function() {
                 if (document.getElementById('demoModal').classList.contains('show')) {
